@@ -22,7 +22,8 @@ DisplayManager displayManager;
 // Configure these values before testing with real hardware.
 const char* WIFI_SSID = "TON_WIFI";
 const char* WIFI_PASSWORD = "TON_MOT_DE_PASSE";
-const char* MQTT_HOST = "192.168.1.10";
+// Broker MQTT public HiveMQ (compatible avec le dashboard web)
+const char* MQTT_HOST = "broker.hivemq.com";
 const uint16_t MQTT_PORT = 1883;
 
 const uint32_t DATA_INTERVAL_MS = 100;
@@ -82,7 +83,8 @@ void connectWiFi() {
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
-    if (strcmp(topic, "ventilator/config") != 0) {
+    // Topic config compatible avec le dashboard web
+    if (strcmp(topic, "respirateur-medvent/config") != 0) {
         return;
     }
 
@@ -102,7 +104,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     settings.ie_ratio = doc["ie_ratio"] | settings.ie_ratio;
     displayManager.setSettings(settings);
 
-    Serial.println("Received ventilator/config from dashboard");
+    Serial.println("Received respirateur-medvent/config from dashboard");
 }
 
 void connectMQTT() {
@@ -121,8 +123,8 @@ void connectMQTT() {
     Serial.print("Connecting to MQTT broker: ");
     Serial.println(MQTT_HOST);
     if (mqttClient.connect(clientId.c_str())) {
-        mqttClient.subscribe("ventilator/config");
-        Serial.println("MQTT connected and subscribed to ventilator/config");
+        mqttClient.subscribe("respirateur-medvent/config");
+        Serial.println("MQTT connected and subscribed to respirateur-medvent/config");
     } else {
         Serial.print("MQTT connection failed, rc=");
         Serial.println(mqttClient.state());
@@ -188,7 +190,8 @@ void publishVentilatorData(const VentilatorData& data) {
 
     char payload[256];
     serializeJson(doc, payload, sizeof(payload));
-    mqttClient.publish("ventilator/data", payload);
+    // Topic data compatible avec le dashboard web
+    mqttClient.publish("respirateur-medvent/data", payload);
 }
 
 /**

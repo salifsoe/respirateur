@@ -90,21 +90,25 @@ const char* WIFI_PASSWORD = "VOTRE_MOT_DE_PASSE";
 
 ### Étape 2 : Configuration MQTT
 
-Modifier la ligne 25 dans `src/main.cpp` :
+Modifier les lignes 25-27 dans `src/main.cpp` :
 
-**Option A - Broker MQTT Local (Recommandé pour production)**
-```cpp
-const char* MQTT_HOST = "192.168.1.10";  // Adresse IP de votre broker
-const uint16_t MQTT_PORT = 1883;
-```
-
-**Option B - Broker Public HiveMQ (Pour tests)**
+**Option A - Broker Public HiveMQ (Par défaut, compatible avec dashboard Vercel)**
 ```cpp
 const char* MQTT_HOST = "broker.hivemq.com";
 const uint16_t MQTT_PORT = 1883;
 ```
 
-**Note :** Le dashboard Vercel utilise `wss://broker.hivemq.com:8884/mqtt` par défaut. L'ESP32 utilise le port 1883 (MQTT standard) et non WebSocket.
+**Option B - Broker MQTT Local (Pour production hors-ligne)**
+```cpp
+const char* MQTT_HOST = "192.168.1.10";  // Adresse IP de votre broker
+const uint16_t MQTT_PORT = 1883;
+```
+
+**Topics MQTT utilisés :**
+- ESP32 → Dashboard : `respirateur-medvent/data` (données ventilateur)
+- Dashboard → ESP32 : `respirateur-medvent/config` (paramètres de ventilation)
+
+**Note :** Le dashboard Vercel utilise `wss://broker.hivemq.com:8884/mqtt` par défaut. L'ESP32 utilise le port 1883 (MQTT standard) et non WebSocket. Les topics sont synchronisés entre firmware et dashboard.
 
 ### Étape 3 : Configuration des Pins TFT
 
