@@ -108,6 +108,11 @@ const uint16_t MQTT_PORT = 1883;
 - ESP32 → Dashboard : `respirateur-medvent/data` (données ventilateur)
 - Dashboard → ESP32 : `respirateur-medvent/config` (paramètres de ventilation)
 
+**Paramètres MQTT optimisés :**
+- Keepalive : 60 secondes (évite les déconnexions intempestives)
+- Intervalle publication : 500ms (réduit pour éviter surcharge broker)
+- Reconnexion automatique : toutes les 3 secondes si déconnecté
+
 **Note :** Le dashboard Vercel utilise `wss://broker.hivemq.com:8884/mqtt` par défaut. L'ESP32 utilise le port 1883 (MQTT standard) et non WebSocket. Les topics sont synchronisés entre firmware et dashboard.
 
 ### Étape 3 : Configuration des Pins TFT

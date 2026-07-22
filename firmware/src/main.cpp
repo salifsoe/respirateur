@@ -26,9 +26,10 @@ const char* WIFI_PASSWORD = "TON_MOT_DE_PASSE";
 const char* MQTT_HOST = "broker.hivemq.com";
 const uint16_t MQTT_PORT = 1883;
 
-const uint32_t DATA_INTERVAL_MS = 100;
+const uint32_t DATA_INTERVAL_MS = 500;  // Réduit à 500ms pour éviter surcharge MQTT
 const uint32_t WIFI_RETRY_INTERVAL_MS = 5000;
 const uint32_t MQTT_RETRY_INTERVAL_MS = 3000;
+const uint16_t MQTT_KEEPALIVE = 60;  // Keepalive 60 secondes
 
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
@@ -107,8 +108,19 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     Serial.println("Received respirateur-medvent/config from dashboard");
 }
 
+// Callback pour détecter les déconnexions MQTT
+void mqttDisconnectedCallback() {
+    Serial.println("MQTT disconnected unexpectedly");
+    Serial.println("Will attempt to reconnect...");
+}
+
 void connectMQTT() {
-    if (WiFi.status() != WL_CONNECTED || mqttClient.connected()) {
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("MQTT: WiFi not connected, skipping MQTT connection");
+        return;
+    }
+
+    if (mqttClient.connected()) {
         return;
     }
 
@@ -122,12 +134,33 @@ void connectMQTT() {
 
     Serial.print("Connecting to MQTT broker: ");
     Serial.println(MQTT_HOST);
-    if (mqttClient.connect(clientId.c_str())) {
+    Serial.print("Client ID: ");
+    Serial.println(clientId);
+    
+    // Connexion avec keepalive étendu
+    if (mqttClient.connect(clientId.c_str(), NULL, NULL, NULL, 0, false, false, MQTT_KEEPALIVE)) {
         mqttClient.subscribe("respirateur-medvent/config");
         Serial.println("MQTT connected and subscribed to respirateur-medvent/config");
+        Serial.print("Keepalive: ");
+        Serial.print(MQTT_KEEPALIVE);
+        Serial.println(" seconds");
     } else {
         Serial.print("MQTT connection failed, rc=");
         Serial.println(mqttClient.state());
+        Serial.print("State meaning: ");
+        switch (mqttClient.state()) {
+            case -4: Serial.println("MQTT_CONNECTION_TIMEOUT"); break;
+            case -3: Serial.println("MQTT_CONNECTION_LOST"); break;
+            case -2: Serial.println("MQTT_CONNECT_FAILED"); break;
+            case -1: Serial.println("MQTT_DISCONNECTED"); break;
+            case 0: Serial.println("MQTT_CONNECTED"); break;
+            case 1: Serial.println("MQTT_CONNECT_BAD_PROTOCOL"); break;
+            case 2: Serial.println("MQTT_CONNECT_BAD_CLIENT_ID"); break;
+            case 3: Serial.println("MQTT_CONNECT_UNAVAILABLE"); break;
+            case 4: Serial.println("MQTT_CONNECT_BAD_CREDENTIALS"); break;
+            case 5: Serial.println("MQTT_CONNECT_UNAUTHORIZED"); break;
+            default: Serial.println("Unknown state"); break;
+        }
     }
 }
 
@@ -228,14 +261,32 @@ void setup() {
 
     mqttClient.setServer(MQTT_HOST, MQTT_PORT);
     mqttClient.setCallback(mqttCallback);
+    mqttClient.setKeepAlive(MQTT_KEEPALIVE);
     
     Serial.println("Display Manager initialized");
     Serial.println("Edit WIFI_SSID, WIFI_PASSWORD, and MQTT_HOST in src/main.cpp before MQTT testing.");
+    Serial.print("MQTT Keepalive set to: ");
+    Serial.print(MQTT_KEEPALIVE);
+    Serial.println(" seconds");
+    Serial.print("Data publish interval: ");
+    Serial.print(DATA_INTERVAL_MS);
+    Serial.println(" ms");
 }
 
 void loop() {
     connectWiFi();
     connectMQTT();
+    
+    // Vérifier la connexion MQTT et logger le statut
+    static unsigned long lastStatusLog = 0;
+    if (millis() - lastStatusLog > 10000) {  // Log toutes les 10 secondes
+        lastStatusLog = millis();
+        Serial.print("MQTT Status: ");
+        Serial.println(mqttClient.connected() ? "Connected" : "Disconnected");
+        Serial.print("WiFi Status: ");
+        Serial.println(WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected");
+    }
+    
     mqttClient.loop();
 
     const unsigned long now = millis();
